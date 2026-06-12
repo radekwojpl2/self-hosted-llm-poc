@@ -70,6 +70,15 @@ creates the very identity the pipeline authenticates with.
 ## Deploy
 Run the **deploy** workflow manually from GitHub Actions.
 
+> **Important:** the pipeline completing does not mean the VM is ready. Cloud-init
+> runs in the background after the VM boots, installing Ollama, Docker, and Open WebUI.
+> This takes **5–15 minutes**. Tailscale connects early so `ollama-vm` will appear in
+> your machines list before everything is ready. Wait until Open WebUI is healthy:
+> ```bash
+> ssh azureuser@ollama-vm
+> docker ps   # open-webui should show Status: (healthy)
+> ```
+
 ## Pull a model
 
 After deploy, SSH into the VM and pull a model manually:
