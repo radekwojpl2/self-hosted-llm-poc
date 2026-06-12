@@ -34,7 +34,7 @@ write_files:
       export DEBIAN_FRONTEND=noninteractive
       apt-get update
       apt-get install -y ubuntu-drivers-common jq curl
-      ubuntu-drivers install --gpgpu nvidia:550-server || ubuntu-drivers autoinstall || true
+      ubuntu-drivers install --gpgpu || ubuntu-drivers autoinstall || true
 
       # --- Tailscale (with Tailscale SSH) ---
       curl -fsSL https://tailscale.com/install.sh | sh
