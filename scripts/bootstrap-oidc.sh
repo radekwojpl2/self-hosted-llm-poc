@@ -51,7 +51,7 @@ else
   SCOPE="/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RG_NAME"
 fi
 echo ">> Assigning Contributor at: $SCOPE"
-az role assignment create \
+MSYS_NO_PATHCONV=1 az role assignment create \
   --assignee-object-id "$SP_OBJECT_ID" \
   --assignee-principal-type ServicePrincipal \
   --role Contributor \
