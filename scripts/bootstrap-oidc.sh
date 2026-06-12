@@ -20,7 +20,7 @@ RG_NAME="${RG_NAME:-ollama-rg}"
 LOCATION="${LOCATION:-westeurope}"
 BRANCH="${BRANCH:-main}"
 # Scope the role to the RG (least privilege) unless SCOPE_SUBSCRIPTION=1.
-SCOPE_SUBSCRIPTION="${SCOPE_SUBSCRIPTION:-0}"
+SCOPE_SUBSCRIPTION="${SCOPE_SUBSCRIPTION:-1}"
 # Push results into GitHub secrets via gh CLI (needs gh auth). 1=yes 0=no.
 SET_GH_SECRETS="${SET_GH_SECRETS:-1}"
 
