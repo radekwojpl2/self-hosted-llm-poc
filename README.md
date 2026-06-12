@@ -68,25 +68,37 @@ creates the very identity the pipeline authenticates with.
 | `TS_TAILNET` | Tailnet name |
 
 ## Deploy
-Push to `main` (touching tracked paths) or run the **deploy** workflow manually.
+Run the **deploy** workflow manually from GitHub Actions.
+
+## Pull a model
+
+After deploy, SSH into the VM and pull a model manually:
+
+```bash
+ssh azureuser@ollama-vm
+ollama pull tinyllama        # ~600 MB, good for testing
+ollama pull phi3:mini        # ~2.3 GB, better quality
+ollama pull llama3.1:8b      # ~4.7 GB, recommended for GPU
+ollama list                  # verify downloaded models
+```
+
+Models are stored on the persistent data disk (`/mnt/models`) and survive VM restarts.
 
 ## Use it
 
 **Browser (Open WebUI):** from any device on your tailnet, open
-`https://ollama-vm.<your-tailnet>.ts.net` (or `http://ollama-vm:8080` if HTTPS
-certs aren't enabled). First visit, create the admin account. Chats and settings
-persist on the data disk.
+`https://ollama-vm.<your-tailnet>.ts.net`. First visit, create the admin account.
+Chats and settings persist on the data disk.
 
 **CLI / API:**
 ```bash
-tailscale ssh azureuser@ollama-vm                 # shell access
-OLLAMA_HOST=http://ollama-vm:11434 ollama run llama3.1:8b
-# or hit the API:
-curl http://ollama-vm:11434/api/generate -d '{"model":"llama3.1:8b","prompt":"hi"}'
+ssh azureuser@ollama-vm                           # shell access
+OLLAMA_HOST=http://ollama-vm:11434 ollama run tinyllama
+# or hit the API directly:
+curl http://ollama-vm:11434/api/generate -d '{"model":"tinyllama","prompt":"hi"}'
 ```
 
-> Lock Ollama's `11434` down with **Tailscale ACLs** — it binds to `0.0.0.0` on the
-> host but is only reachable inside the tailnet (no public inbound).
+> Ollama binds to `0.0.0.0:11434` but is only reachable inside the tailnet — no public inbound ports are open.
 
 ## Tear down
 Run the **deprovision** workflow and type `DELETE`. It removes the Tailscale node,
