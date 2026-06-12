@@ -1,0 +1,26 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Azure / Bicep
+*.parameters.local.json
+*.env
+.env*
+azuredeploy.parameters.*.json
+deploymentOutputs.json
+
+# Terraform (if added later)
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# SSH keys / secrets
+*.pem
+*.key
+id_rsa*
+id_ed25519*

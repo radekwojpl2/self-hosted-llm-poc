@@ -1,0 +1,53 @@
+name: deprovision
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DELETE to confirm full teardown'
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deprovision:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.confirm == 'DELETE' }}
+    steps:
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Remove the node from the tailnet first (hostname lookup still resolves).
+      # With an ephemeral auth key this is belt-and-suspenders; the node would
+      # also auto-expire after going offline.
+      - name: Remove Tailscale node
+        env:
+          TS_API_KEY: ${{ secrets.TS_API_KEY }}
+          TS_TAILNET: ${{ secrets.TS_TAILNET }}
+        run: |
+          set -euo pipefail
+          DEVICES=$(curl -s -u "${TS_API_KEY}:" \
+            "https://api.tailscale.com/api/v2/tailnet/${TS_TAILNET}/devices")
+          NODE_ID=$(echo "$DEVICES" | jq -r \
+            '.devices[] | select(.hostname=="ollama-vm") | .nodeId')
+          if [ -n "${NODE_ID:-}" ] && [ "$NODE_ID" != "null" ]; then
+            curl -s -u "${TS_API_KEY}:" -X DELETE \
+              "https://api.tailscale.com/api/v2/device/${NODE_ID}"
+            echo "Removed Tailscale node $NODE_ID"
+          else
+            echo "No matching Tailscale node found; skipping."
+          fi
+
+      # Option A: delete the entire resource group (everything in it).
+      - name: Delete resource group
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az group delete --name "${{ secrets.AZURE_RG }}" --yes --no-wait
+            echo "Resource group deletion started."

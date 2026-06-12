@@ -1,0 +1,76 @@
+#cloud-config
+# Placeholders filled by Bicep format(): {0}=tailscaleAuthKey  {1}=ollamaModel  {2}=hostname
+package_update: true
+package_upgrade: false
+
+write_files:
+  # Bind Ollama to the tailnet interface range; access controlled by Tailscale ACLs.
+  - path: /etc/systemd/system/ollama.service.d/override.conf
+    content: |
+      [Service]
+      Environment="OLLAMA_HOST=0.0.0.0:11434"
+      Environment="OLLAMA_MODELS=/mnt/models"
+
+  - path: /usr/local/bin/setup-ollama.sh
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      set -euxo pipefail
+
+      # --- Persistent data disk (LUN 0) for models ---
+      DISK=$(ls /dev/disk/azure/scsi1/lun0 2>/dev/null || true)
+      DISK=$(readlink -f "$DISK")
+      if [ -n "$DISK" ]; then
+        if ! blkid "$DISK"; then
+          mkfs.ext4 -F "$DISK"
+        fi
+        mkdir -p /mnt/models
+        UUID=$(blkid -s UUID -o value "$DISK")
+        grep -q "$UUID" /etc/fstab || echo "UUID=$UUID /mnt/models ext4 defaults,nofail 0 2" >> /etc/fstab
+        mount -a
+      fi
+
+      # --- NVIDIA drivers + container toolkit (T4) ---
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update
+      apt-get install -y ubuntu-drivers-common jq curl
+      ubuntu-drivers install --gpgpu nvidia:550-server || ubuntu-drivers autoinstall || true
+
+      # --- Tailscale (with Tailscale SSH) ---
+      curl -fsSL https://tailscale.com/install.sh | sh
+      tailscale up --ssh --authkey="{0}" --hostname="{2}" --accept-routes
+
+      # --- Ollama ---
+      curl -fsSL https://ollama.com/install.sh | sh
+      mkdir -p /mnt/models
+      chown -R ollama:ollama /mnt/models || true
+      systemctl daemon-reload
+      systemctl enable --now ollama
+      sleep 5
+
+      # --- Pull model (survives on the data disk) ---
+      ollama pull "{1}" || true
+
+      # --- Docker (for Open WebUI) ---
+      curl -fsSL https://get.docker.com | sh
+      systemctl enable --now docker
+
+      # --- Open WebUI (browser UI for Ollama) ---
+      # Bound to localhost only; exposed to the tailnet via Tailscale Serve below.
+      # Data persists on the model disk so it survives evictions/restarts.
+      mkdir -p /mnt/models/open-webui
+      docker run -d --restart always \
+        --name open-webui \
+        -p 127.0.0.1:8080:8080 \
+        -e OLLAMA_BASE_URL=http://host.docker.internal:11434 \
+        --add-host host.docker.internal:host-gateway \
+        -v /mnt/models/open-webui:/app/backend/data \
+        ghcr.io/open-webui/open-webui:main
+
+      # --- Expose Open WebUI over the tailnet with HTTPS (Tailscale Serve) ---
+      # Reachable only inside your tailnet at https://{2}.<your-tailnet>.ts.net
+      tailscale serve --bg --https=443 http://127.0.0.1:8080 || \
+        tailscale serve --bg http://127.0.0.1:8080 || true
+
+runcmd:
+  - /usr/local/bin/setup-ollama.sh
