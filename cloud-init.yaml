@@ -11,6 +11,21 @@ write_files:
       Environment="OLLAMA_HOST=0.0.0.0:11434"
       Environment="OLLAMA_MODELS=/mnt/models"
 
+  - path: /etc/systemd/system/tailscale-serve.service
+    content: |
+      [Unit]
+      Description=Tailscale Serve for Open WebUI
+      After=tailscaled.service network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/bin/tailscale serve --bg --https=443 http://127.0.0.1:8080
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+
   - path: /usr/local/bin/setup-ollama.sh
     permissions: '0755'
     content: |
@@ -60,8 +75,7 @@ write_files:
         ghcr.io/open-webui/open-webui:main
 
       # --- Expose Open WebUI over the tailnet with HTTPS (Tailscale Serve) ---
-      tailscale serve --bg --https=443 http://127.0.0.1:8080 || \
-        tailscale serve --bg http://127.0.0.1:8080 || true
+      systemctl enable --now tailscale-serve
 
 runcmd:
   - /usr/local/bin/setup-ollama.sh
