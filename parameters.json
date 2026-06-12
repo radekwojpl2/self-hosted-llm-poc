@@ -4,7 +4,7 @@
   "parameters": {
     "namePrefix":          { "value": "ollama" },
     "adminUsername":       { "value": "azureuser" },
-    "vmSize":              { "value": "Standard_NC6s_v3" },
+    "vmSize":              { "value": "Standard_NV6ads_A10_v5" },
     "spotMaxPrice":        { "value": "-1" },
     "dataDiskSizeGB":      { "value": 128 },
     "autoShutdownTime":    { "value": "2000" },
