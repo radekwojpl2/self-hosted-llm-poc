@@ -1,0 +1,40 @@
+name: pull-model
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: 'Ollama model to pull (e.g. llama3.1:8b, mistral, phi3)'
+        required: true
+        default: 'llama3.1:8b'
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AZURE_RG: ${{ secrets.AZURE_RG }}
+  VM_NAME: ollama-vm
+
+jobs:
+  pull-model:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Pull model on VM
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az vm run-command invoke \
+              --resource-group "$AZURE_RG" \
+              --name "$VM_NAME" \
+              --command-id RunShellScript \
+              --scripts "ollama pull ${{ github.event.inputs.model }}" \
+              --query value[0].message \
+              -o tsv
