@@ -28,7 +28,14 @@ echo ">> Subscription: $SUBSCRIPTION_ID"
 echo ">> Repo:         $REPO"
 echo ">> App name:     $APP_NAME"
 
-# ---- 1. App registration + service principal ------------------------------
+# ---- 1. Register required resource providers ------------------------------
+echo ">> Registering resource providers..."
+for ns in Microsoft.Compute Microsoft.Network Microsoft.DevTestLab; do
+  az provider register --namespace "$ns" --wait -o none
+  echo "   $ns registered"
+done
+
+# ---- 2. App registration + service principal ------------------------------
 APP_ID=$(az ad app list --display-name "$APP_NAME" --query "[0].appId" -o tsv)
 if [ -z "$APP_ID" ]; then
   APP_ID=$(az ad app create --display-name "$APP_NAME" --query appId -o tsv)
@@ -42,7 +49,7 @@ az ad sp show --id "$APP_ID" >/dev/null 2>&1 || az ad sp create --id "$APP_ID" >
 SP_OBJECT_ID=$(az ad sp show --id "$APP_ID" --query id -o tsv)
 TENANT_ID=$(az account show --query tenantId -o tsv)
 
-# ---- 2. Role assignment (Contributor) -------------------------------------
+# ---- 3. Role assignment (Contributor) -------------------------------------
 if [ "$SCOPE_SUBSCRIPTION" = "1" ]; then
   SCOPE="/subscriptions/$SUBSCRIPTION_ID"
 else
@@ -57,7 +64,7 @@ MSYS_NO_PATHCONV=1 az role assignment create \
   --role Contributor \
   --scope "$SCOPE" -o none || echo "   (role assignment may already exist)"
 
-# ---- 3. Federated credentials (OIDC) --------------------------------------
+# ---- 4. Federated credentials (OIDC) --------------------------------------
 add_fic () {
   local name="$1" subject="$2"
   # Skip if a credential with this subject already exists.
@@ -91,7 +98,7 @@ echo "AZURE_RG              = $RG_NAME"
 echo "AZURE_LOCATION        = $LOCATION"
 echo "========================================================"
 
-# ---- 4. Push to GitHub secrets (optional) ---------------------------------
+# ---- 5. Push to GitHub secrets (optional) ---------------------------------
 if [ "$SET_GH_SECRETS" = "1" ] && command -v gh >/dev/null 2>&1; then
   echo ">> Setting GitHub secrets via gh..."
   gh secret set AZURE_CLIENT_ID       --repo "$REPO" --body "$APP_ID"
