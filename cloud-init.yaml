@@ -30,11 +30,9 @@ write_files:
         mount -a
       fi
 
-      # --- NVIDIA drivers + container toolkit (T4) ---
       export DEBIAN_FRONTEND=noninteractive
       apt-get update
-      apt-get install -y ubuntu-drivers-common jq curl
-      ubuntu-drivers install --gpgpu || ubuntu-drivers autoinstall || true
+      apt-get install -y jq curl
 
       # --- Tailscale (with Tailscale SSH) ---
       curl -fsSL https://tailscale.com/install.sh | sh
