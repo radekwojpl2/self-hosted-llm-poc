@@ -23,9 +23,6 @@ param sshPublicKey string
 @secure()
 param tailscaleAuthKey string
 
-@description('Ollama model to pull on first boot.')
-param ollamaModel string = 'llama3.1:8b'
-
 @description('GPU VM size (NC T4 v3 family).')
 param vmSize string = 'Standard_NC4as_T4_v3'
 
@@ -50,7 +47,7 @@ var vmName      = '${namePrefix}-vm'
 var dataDiskName = '${namePrefix}-data'
 
 // Cloud-init rendered with parameters, then base64-encoded for customData.
-var cloudInit = format(loadTextContent('cloud-init.yaml'), tailscaleAuthKey, ollamaModel, vmName)
+var cloudInit = format(loadTextContent('cloud-init.yaml'), tailscaleAuthKey, vmName)
 
 // --- Networking -------------------------------------------------------------
 // NSG with NO inbound SSH rule. Default rules deny inbound from internet;

@@ -1,5 +1,5 @@
 #cloud-config
-# Placeholders filled by Bicep format(): {0}=tailscaleAuthKey  {1}=ollamaModel  {2}=hostname
+# Placeholders filled by Bicep format(): {0}=tailscaleAuthKey  {1}=hostname
 package_update: true
 package_upgrade: false
 
@@ -38,7 +38,7 @@ write_files:
 
       # --- Tailscale (with Tailscale SSH) ---
       curl -fsSL https://tailscale.com/install.sh | sh
-      tailscale up --ssh --authkey="{0}" --hostname="{2}" --accept-routes
+      tailscale up --ssh --authkey="{0}" --hostname="{1}" --accept-routes
 
       # --- Ollama ---
       curl -fsSL https://ollama.com/install.sh | sh
@@ -46,18 +46,12 @@ write_files:
       chown -R ollama:ollama /mnt/models || true
       systemctl daemon-reload
       systemctl enable --now ollama
-      sleep 5
-
-      # --- Pull model (survives on the data disk) ---
-      ollama pull "{1}" || true
 
       # --- Docker (for Open WebUI) ---
       curl -fsSL https://get.docker.com | sh
       systemctl enable --now docker
 
       # --- Open WebUI (browser UI for Ollama) ---
-      # Bound to localhost only; exposed to the tailnet via Tailscale Serve below.
-      # Data persists on the model disk so it survives evictions/restarts.
       mkdir -p /mnt/models/open-webui
       docker run -d --restart always \
         --name open-webui \
@@ -68,7 +62,6 @@ write_files:
         ghcr.io/open-webui/open-webui:main
 
       # --- Expose Open WebUI over the tailnet with HTTPS (Tailscale Serve) ---
-      # Reachable only inside your tailnet at https://{2}.<your-tailnet>.ts.net
       tailscale serve --bg --https=443 http://127.0.0.1:8080 || \
         tailscale serve --bg http://127.0.0.1:8080 || true
 

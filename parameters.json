@@ -4,7 +4,6 @@
   "parameters": {
     "namePrefix":          { "value": "ollama" },
     "adminUsername":       { "value": "azureuser" },
-    "ollamaModel":         { "value": "llama3.1:8b" },
     "vmSize":              { "value": "Standard_NC4as_T4_v3" },
     "spotMaxPrice":        { "value": "-1" },
     "dataDiskSizeGB":      { "value": 128 },
