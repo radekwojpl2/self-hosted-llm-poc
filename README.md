@@ -76,8 +76,8 @@ After deploy, SSH into the VM and pull a model manually:
 
 ```bash
 ssh azureuser@ollama-vm
-ollama pull tinyllama        # ~600 MB, good for testing
-ollama pull phi3:mini        # ~2.3 GB, better quality
+ollama pull llama3.2:1b      # ~1.3 GB, smallest model with tool support
+ollama pull llama3.2:3b      # ~2 GB, better quality
 ollama pull llama3.1:8b      # ~4.7 GB, recommended for GPU
 ollama list                  # verify downloaded models
 ```
