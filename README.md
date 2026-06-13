@@ -99,15 +99,24 @@ Models are stored on the persistent data disk (`/mnt/models`) and survive VM res
 `https://ollama-vm.<your-tailnet>.ts.net`. First visit, create the admin account.
 Chats and settings persist on the data disk.
 
-**CLI / API:**
-```bash
-ssh azureuser@ollama-vm                           # shell access
-OLLAMA_HOST=http://ollama-vm:11434 ollama run tinyllama
-# or hit the API directly:
-curl http://ollama-vm:11434/api/generate -d '{"model":"tinyllama","prompt":"hi"}'
-```
-
 > Ollama binds to `0.0.0.0:11434` but is only reachable inside the tailnet — no public inbound ports are open.
+
+**opencode:** add this to your `~/.opencode/config.json` to use the VM as a provider:
+
+```json
+"ollama": {
+  "npm": "@ai-sdk/openai-compatible",
+  "name": "Ollama (VM)",
+  "options": {
+    "baseURL": "http://ollama-vm:11434/v1"
+  },
+  "models": {
+    "llama3.2:1b": {
+      "name": "Llama 3.2 1B"
+    }
+  }
+}
+```
 
 ## Tear down
 Run the **deprovision** workflow and type `DELETE`. It removes the Tailscale node,
