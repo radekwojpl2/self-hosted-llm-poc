@@ -125,5 +125,5 @@ then deletes the whole resource group (VM, disks, network, IP — everything).
 ## Notes
 - T4 region availability and Spot quota vary — pick a region (`AZURE_LOCATION`) that
   has `Standard_NC4as_T4_v3` Spot capacity and request quota if needed.
-- First boot installs NVIDIA drivers; allow a few minutes before GPU inference works.
+- First boot installs NVIDIA drivers via `ubuntu-drivers install`; allow a few extra minutes before GPU inference works.
 - Change the model via `ollamaModel` in `parameters.json`.
