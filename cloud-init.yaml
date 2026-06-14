@@ -45,6 +45,19 @@ write_files:
       [Install]
       WantedBy=multi-user.target
 
+  - path: /usr/local/bin/deepseek-r1-32k-start
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      if ! ollama list | grep -q 'deepseek-r1-32k'; then
+        echo "==> Pulling deepseek-r1:14b..."
+        ollama pull deepseek-r1:14b
+        echo "==> Creating deepseek-r1-32k with 32k context..."
+        printf 'FROM deepseek-r1:14b\nPARAMETER num_ctx 32768\n' | ollama create deepseek-r1-32k -f -
+      fi
+      ollama run deepseek-r1-32k
+
   - path: /usr/local/bin/setup-models
     permissions: '0755'
     content: |
