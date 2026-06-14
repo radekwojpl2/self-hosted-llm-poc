@@ -58,30 +58,6 @@ write_files:
       fi
       ollama run deepseek-r1-32k
 
-  - path: /usr/local/bin/setup-models
-    permissions: '0755'
-    content: |
-      #!/usr/bin/env bash
-      set -euo pipefail
-
-      echo "==> Pulling deepseek-r1:14b (this will take a while)..."
-      ollama pull deepseek-r1:14b
-
-      echo "==> Creating deepseek-r1-32k with 32k context..."
-      MODELFILE=$(mktemp)
-      cat > "$MODELFILE" <<'MODELEOF'
-      FROM deepseek-r1:14b
-      PARAMETER num_ctx 32768
-      MODELEOF
-      ollama create deepseek-r1-32k -f "$MODELFILE"
-      rm "$MODELFILE"
-
-      echo "==> Done. VRAM usage:"
-      nvidia-smi --query-gpu=name,memory.used,memory.free,memory.total --format=csv,noheader
-
-      echo ""
-      echo "Run with: ollama run deepseek-r1-32k"
-
   - path: /usr/local/bin/start
     permissions: '0755'
     content: |
