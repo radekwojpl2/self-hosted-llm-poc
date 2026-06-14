@@ -67,12 +67,13 @@ write_files:
         exit 1
       fi
       tmux new-session -d -s vm
-      tmux send-keys -t vm 'journalctl -fu ollama' Enter
       tmux split-window -v -t vm
-      tmux send-keys -t vm 'watch -n1 nvidia-smi' Enter
-      tmux split-window -h -t vm
+      tmux send-keys -t vm:0.1 'journalctl -fu ollama' Enter
+      tmux split-window -h -t vm:0.1
+      tmux send-keys -t vm:0.2 'watch -n1 nvidia-smi' Enter
+      tmux select-pane -t vm:0.1
+      tmux resize-pane -t vm:0.1 -y 30
       tmux select-pane -t vm:0.0
-      tmux resize-pane -t vm:0.0 -y 70
       tmux attach-session -t vm
 
   - path: /usr/local/bin/attach-start
