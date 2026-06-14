@@ -45,6 +45,27 @@ write_files:
       [Install]
       WantedBy=multi-user.target
 
+  - path: /usr/local/bin/start
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      if tmux has-session -t vm 2>/dev/null; then
+        echo "Session 'vm' already exists. Use attach-start to resume it."
+        exit 1
+      fi
+      tmux new-session -d -s vm -n ollama
+      tmux send-keys -t vm:0 'journalctl -fu ollama' Enter
+      tmux new-window -t vm -n nvidia
+      tmux send-keys -t vm:1 'watch -n1 nvidia-smi' Enter
+      tmux new-window -t vm -n shell
+      tmux attach-session -t vm
+
+  - path: /usr/local/bin/attach-start
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      tmux attach-session -t vm
+
   # Phase 1: disk setup + NVIDIA drivers. Reboots when done.
   - path: /usr/local/bin/setup-phase1.sh
     permissions: '0755'
@@ -67,7 +88,7 @@ write_files:
 
       export DEBIAN_FRONTEND=noninteractive
       apt-get update
-      apt-get install -y jq curl ubuntu-drivers-common
+      apt-get install -y jq curl ubuntu-drivers-common tmux
       ubuntu-drivers install
 
       # Schedule phase 2 to run after reboot, then reboot to activate drivers.
