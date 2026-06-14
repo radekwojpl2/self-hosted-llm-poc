@@ -31,6 +31,9 @@ jobs:
           inlineScript: |
             az group create --name "$AZURE_RG" --location "$LOCATION" -o none
 
+      - name: Assemble cloud-init
+        run: python3 scripts/build-cloud-init.py
+
       - name: Deploy Bicep
         uses: azure/cli@v2
         with:

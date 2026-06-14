@@ -4,7 +4,6 @@ package_update: true
 package_upgrade: false
 
 write_files:
-  # Bind Ollama to the tailnet interface range; access controlled by Tailscale ACLs.
   - path: /etc/systemd/system/ollama.service.d/override.conf
     content: |
       [Service]
@@ -26,8 +25,6 @@ write_files:
       [Install]
       WantedBy=multi-user.target
 
-  # Runs once after reboot to install Tailscale, Ollama, Docker, Open WebUI.
-  # Disabled by ExecStartPost so it never runs again on subsequent boots.
   - path: /etc/systemd/system/setup-phase2.service
     content: |
       [Unit]
@@ -45,109 +42,7 @@ write_files:
       [Install]
       WantedBy=multi-user.target
 
-  - path: /usr/local/bin/deepseek-r1-32k-start
-    permissions: '0755'
-    content: |
-      #!/usr/bin/env bash
-      set -euo pipefail
-      if ! ollama list | grep -q 'deepseek-r1-32k'; then
-        echo "==> Pulling deepseek-r1:14b..."
-        ollama pull deepseek-r1:14b
-        echo "==> Creating deepseek-r1-32k with 32k context..."
-        MODELFILE=$(mktemp /tmp/Modelfile.XXXXXX)
-        printf 'FROM deepseek-r1:14b\nPARAMETER num_ctx 32768\n' > "$MODELFILE"
-        ollama create deepseek-r1-32k -f "$MODELFILE"
-        rm "$MODELFILE"
-      fi
-      ollama run deepseek-r1-32k
-
-  - path: /usr/local/bin/start
-    permissions: '0755'
-    content: |
-      #!/usr/bin/env bash
-      if tmux has-session -t vm 2>/dev/null; then
-        echo "Session 'vm' already exists. Use attach-start to resume it."
-        exit 1
-      fi
-      tmux new-session -d -s vm
-      tmux split-window -v -t vm
-      tmux send-keys -t vm:0.1 'journalctl -fu ollama' Enter
-      tmux split-window -h -t vm:0.1
-      tmux send-keys -t vm:0.2 'watch -n1 nvidia-smi' Enter
-      tmux select-pane -t vm:0.1
-      tmux resize-pane -t vm:0.1 -y 30
-      tmux select-pane -t vm:0.0
-      tmux attach-session -t vm
-
-  - path: /usr/local/bin/attach-start
-    permissions: '0755'
-    content: |
-      #!/usr/bin/env bash
-      tmux attach-session -t vm
-
-  # Phase 1: disk setup + NVIDIA drivers. Reboots when done.
-  - path: /usr/local/bin/setup-phase1.sh
-    permissions: '0755'
-    content: |
-      #!/usr/bin/env bash
-      set -euxo pipefail
-
-      # --- Persistent data disk (LUN 0) for models ---
-      DISK=$(ls /dev/disk/azure/scsi1/lun0 2>/dev/null || true)
-      DISK=$(readlink -f "$DISK")
-      if [ -n "$DISK" ]; then
-        if ! blkid "$DISK"; then
-          mkfs.ext4 -F "$DISK"
-        fi
-        mkdir -p /mnt/models
-        UUID=$(blkid -s UUID -o value "$DISK")
-        grep -q "$UUID" /etc/fstab || echo "UUID=$UUID /mnt/models ext4 defaults,nofail 0 2" >> /etc/fstab
-        mount -a
-      fi
-
-      export DEBIAN_FRONTEND=noninteractive
-      apt-get update
-      apt-get install -y jq curl ubuntu-drivers-common tmux
-      ubuntu-drivers install
-
-      # Schedule phase 2 to run after reboot, then reboot to activate drivers.
-      systemctl enable setup-phase2.service
-      reboot
-
-  # Phase 2: runs on first boot after driver reboot.
-  - path: /usr/local/bin/setup-phase2.sh
-    permissions: '0755'
-    content: |
-      #!/usr/bin/env bash
-      set -euxo pipefail
-
-      # --- Tailscale (with Tailscale SSH) ---
-      curl -fsSL https://tailscale.com/install.sh | sh
-      tailscale up --ssh --authkey="{0}" --hostname="{1}" --accept-routes
-
-      # --- Ollama ---
-      curl -fsSL https://ollama.com/install.sh | sh
-      mkdir -p /mnt/models
-      chown -R ollama:ollama /mnt/models || true
-      systemctl daemon-reload
-      systemctl enable --now ollama
-
-      # --- Docker (for Open WebUI) ---
-      curl -fsSL https://get.docker.com | sh
-      systemctl enable --now docker
-
-      # --- Open WebUI (browser UI for Ollama) ---
-      mkdir -p /mnt/models/open-webui
-      docker run -d --restart always \
-        --name open-webui \
-        -p 127.0.0.1:8080:8080 \
-        -e OLLAMA_BASE_URL=http://host.docker.internal:11434 \
-        --add-host host.docker.internal:host-gateway \
-        -v /mnt/models/open-webui:/app/backend/data \
-        ghcr.io/open-webui/open-webui:main
-
-      # --- Expose Open WebUI over the tailnet with HTTPS (Tailscale Serve) ---
-      systemctl enable --now tailscale-serve
+# SCRIPTS INJECTED HERE BY CI
 
 runcmd:
   - /usr/local/bin/setup-phase1.sh

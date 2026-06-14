@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if ! ollama list | grep -q 'deepseek-r1-32k'; then
+  echo "==> Pulling deepseek-r1:14b..."
+  ollama pull deepseek-r1:14b
+  echo "==> Creating deepseek-r1-32k with 32k context..."
+  MODELFILE=$(mktemp /tmp/Modelfile.XXXXXX)
+  printf 'FROM deepseek-r1:14b\nPARAMETER num_ctx 32768\n' > "$MODELFILE"
+  ollama create deepseek-r1-32k -f "$MODELFILE"
+  rm "$MODELFILE"
+fi
+ollama run deepseek-r1-32k
