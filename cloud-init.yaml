@@ -26,7 +26,27 @@ write_files:
       [Install]
       WantedBy=multi-user.target
 
-  - path: /usr/local/bin/setup-ollama.sh
+  # Runs once after reboot to install Tailscale, Ollama, Docker, Open WebUI.
+  # Disabled by ExecStartPost so it never runs again on subsequent boots.
+  - path: /etc/systemd/system/setup-phase2.service
+    content: |
+      [Unit]
+      Description=Post-reboot setup: Tailscale, Ollama, Docker, Open WebUI
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/bin/setup-phase2.sh
+      ExecStartPost=/bin/systemctl disable setup-phase2.service
+      RemainAfterExit=yes
+      StandardOutput=journal+console
+
+      [Install]
+      WantedBy=multi-user.target
+
+  # Phase 1: disk setup + NVIDIA drivers. Reboots when done.
+  - path: /usr/local/bin/setup-phase1.sh
     permissions: '0755'
     content: |
       #!/usr/bin/env bash
@@ -49,6 +69,17 @@ write_files:
       apt-get update
       apt-get install -y jq curl ubuntu-drivers-common
       ubuntu-drivers install
+
+      # Schedule phase 2 to run after reboot, then reboot to activate drivers.
+      systemctl enable setup-phase2.service
+      reboot
+
+  # Phase 2: runs on first boot after driver reboot.
+  - path: /usr/local/bin/setup-phase2.sh
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      set -euxo pipefail
 
       # --- Tailscale (with Tailscale SSH) ---
       curl -fsSL https://tailscale.com/install.sh | sh
@@ -79,4 +110,4 @@ write_files:
       systemctl enable --now tailscale-serve
 
 runcmd:
-  - /usr/local/bin/setup-ollama.sh
+  - /usr/local/bin/setup-phase1.sh
