@@ -45,6 +45,38 @@ write_files:
       [Install]
       WantedBy=multi-user.target
 
+  - path: /usr/local/bin/qwen-start
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      if ! ollama list | grep -q 'qwen2.5-32b-128k'; then
+        echo "==> Pulling qwen2.5:32b..."
+        ollama pull qwen2.5:32b
+        echo "==> Creating qwen2.5-32b-128k with 128k context..."
+        MODELFILE=$(mktemp /tmp/Modelfile.XXXXXX)
+        printf 'FROM qwen2.5:32b\nPARAMETER num_ctx 131072\n' > "$MODELFILE"
+        ollama create qwen2.5-32b-128k -f "$MODELFILE"
+        rm "$MODELFILE"
+      fi
+      ollama run qwen2.5-32b-128k
+
+  - path: /usr/local/bin/qwen72b-start
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      if ! ollama list | grep -q 'qwen2.5-72b-32k'; then
+        echo "==> Pulling qwen2.5:72b..."
+        ollama pull qwen2.5:72b
+        echo "==> Creating qwen2.5-72b-32k with 32k context..."
+        MODELFILE=$(mktemp /tmp/Modelfile.XXXXXX)
+        printf 'FROM qwen2.5:72b\nPARAMETER num_ctx 32768\n' > "$MODELFILE"
+        ollama create qwen2.5-72b-32k -f "$MODELFILE"
+        rm "$MODELFILE"
+      fi
+      ollama run qwen2.5-72b-32k
+
   - path: /usr/local/bin/deepseek-r1-32k-start
     permissions: '0755'
     content: |

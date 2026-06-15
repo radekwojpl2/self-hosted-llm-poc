@@ -125,6 +125,8 @@ The VM ships several helper commands (installed to `/usr/local/bin/`):
 | `start` | Creates a `vm` tmux session with 3 panes (see layout below). Run once after SSH. |
 | `attach-start` | Re-attaches to the existing `vm` session after disconnect. |
 | `deepseek-r1-32k-start` | Pulls `deepseek-r1:14b`, creates a `deepseek-r1-32k` variant with 32 k context, then runs it. Skip the pull if already downloaded. |
+| `qwen-start` | Pulls `qwen2.5:32b`, creates a `qwen2.5-32b-128k` variant with 128 k context, then runs it. Skips the pull if already downloaded. |
+| `qwen72b-start` | Pulls `qwen2.5:72b`, creates a `qwen2.5-72b-32k` variant with 32 k context, then runs it. Skips the pull if already downloaded. |
 
 ### tmux layout (`start`)
 
@@ -178,10 +180,12 @@ ollama pull llama3.1:8b      # ~4.7 GB, recommended for GPU
 ollama list                  # verify downloaded models
 ```
 
-For DeepSeek R1 14B with extended context, use the bundled script instead:
+For models with extended context, use the bundled scripts instead:
 
 ```bash
-deepseek-r1-32k-start        # pulls, creates 32k-context variant, and runs it
+deepseek-r1-32k-start        # pulls deepseek-r1:14b, creates 32k-context variant, and runs it
+qwen-start                   # pulls qwen2.5:32b, creates 128k-context variant, and runs it
+qwen72b-start                # pulls qwen2.5:72b, creates 32k-context variant, and runs it
 ```
 
 Models are stored on the persistent data disk (`/mnt/models`) and survive VM restarts.
@@ -206,6 +210,12 @@ Chats and settings persist on the data disk.
   "models": {
     "deepseek-r1-32k": {
       "name": "DeepSeek R1 32k"
+    },
+    "qwen2.5-32b-128k": {
+      "name": "Qwen2.5 32B 128k"
+    },
+    "qwen2.5-72b-32k": {
+      "name": "Qwen2.5 72B 32k"
     }
   }
 }
