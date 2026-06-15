@@ -77,6 +77,22 @@ write_files:
       fi
       ollama run qwen2.5-72b-32k
 
+  - path: /usr/local/bin/qwen14b-start
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+      if ! ollama list | grep -q 'qwen2.5-14b-20k'; then
+        echo "==> Pulling qwen2.5:14b..."
+        ollama pull qwen2.5:14b
+        echo "==> Creating qwen2.5-14b-20k with 20k context..."
+        MODELFILE=$(mktemp /tmp/Modelfile.XXXXXX)
+        printf 'FROM qwen2.5:14b\nPARAMETER num_ctx 20480\n' > "$MODELFILE"
+        ollama create qwen2.5-14b-20k -f "$MODELFILE"
+        rm "$MODELFILE"
+      fi
+      ollama run qwen2.5-14b-20k
+
   - path: /usr/local/bin/deepseek-r1-32k-start
     permissions: '0755'
     content: |
