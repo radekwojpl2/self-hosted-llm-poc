@@ -82,9 +82,13 @@ write_files:
 
       # Window 1: observability health
       tmux new-window -t vm
+      sleep 0.3
       tmux split-window -h -t vm:1
+      sleep 0.3
       tmux split-window -v -t vm:1.0
+      sleep 0.3
       tmux split-window -v -t vm:1.1
+      sleep 0.3
       tmux send-keys -t vm:1.0 'watch -n5 systemctl status alloy' Enter
       tmux send-keys -t vm:1.1 'watch -n5 systemctl status nvidia-gpu-exporter' Enter
       tmux send-keys -t vm:1.2 'journalctl -fu setup-phase2' Enter

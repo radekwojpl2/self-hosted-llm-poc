@@ -74,20 +74,35 @@ creates the very identity the pipeline authenticates with.
   If left off, the UI still serves over plain HTTP on the tailnet.
 
 ### 3. GitHub secrets
-| Secret | Purpose |
+
+Go to your repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret** for each one below.
+
+**Azure** — populated automatically by `bootstrap-oidc.sh` if `gh` is installed, otherwise printed to stdout:
+
+| Secret | Where to find it |
 |---|---|
-| `AZURE_CLIENT_ID` | OIDC app/client id |
-| `AZURE_TENANT_ID` | Azure AD tenant |
-| `AZURE_SUBSCRIPTION_ID` | Subscription |
-| `AZURE_RG` | Resource group name |
-| `AZURE_LOCATION` | e.g. `westeurope` |
-| `SSH_PUB` | Your SSH public key |
-| `TS_AUTHKEY` | Tailscale ephemeral auth key |
-| `TS_API_KEY` | Tailscale API token (teardown) |
-| `TS_TAILNET` | Tailnet name |
-| `GRAFANA_CLOUD_PROM_URL` | Grafana Cloud Prometheus remote write URL |
-| `GRAFANA_CLOUD_PROM_USER` | Grafana Cloud Prometheus username / instance ID |
-| `GRAFANA_CLOUD_API_KEY` | Grafana Cloud API key (metrics:write scope) |
+| `AZURE_CLIENT_ID` | Output of bootstrap script / Azure AD → App registrations |
+| `AZURE_TENANT_ID` | Azure AD → Overview |
+| `AZURE_SUBSCRIPTION_ID` | Azure portal → Subscriptions |
+| `AZURE_RG` | Resource group name you want to deploy into |
+| `AZURE_LOCATION` | Azure region e.g. `westeurope` |
+| `SSH_PUB` | Your local public key — `cat ~/.ssh/id_rsa.pub` |
+
+**Tailscale** — from [admin.tailscale.com](https://admin.tailscale.com):
+
+| Secret | Where to find it |
+|---|---|
+| `TS_AUTHKEY` | Admin → Settings → Keys → **Generate auth key** (reusable, ephemeral, pre-authorized) |
+| `TS_API_KEY` | Admin → Settings → **OAuth clients** → create with `devices:write` scope |
+| `TS_TAILNET` | Admin → DNS → your tailnet name e.g. `your-org.ts.net` |
+
+**Grafana Cloud** — from [grafana.com](https://grafana.com) → your stack:
+
+| Secret | Where to find it |
+|---|---|
+| `GRAFANA_CLOUD_PROM_URL` | Connections → Data sources → your Prometheus → **Prometheus Server URL** — append `/push` |
+| `GRAFANA_CLOUD_PROM_USER` | Same page → **Username / Instance ID** |
+| `GRAFANA_CLOUD_API_KEY` | Search **Access Policies** → create with `metrics:write` scope → Add token |
 
 ## Deploy
 Run the **deploy** workflow manually from GitHub Actions.
@@ -195,6 +210,18 @@ Chats and settings persist on the data disk.
   }
 }
 ```
+
+## Grafana dashboards
+
+Once Alloy is shipping metrics, import the pre-built community dashboards.
+
+1. Grafana Cloud → **Dashboards** → **New** → **Import**
+2. Enter the dashboard ID → **Load** → select your Prometheus data source → **Import**
+
+| Dashboard | ID | What it shows |
+|---|---|---|
+| Node Exporter Full | `1860` | CPU, RAM, disk, network |
+| NVIDIA GPU Metrics | `14574` | GPU utilisation, VRAM, temp, power |
 
 ## Tear down
 Run the **deprovision** workflow and type `DELETE`. It removes the Tailscale node,
