@@ -25,6 +25,25 @@ parameters.json                  # non-secret defaults
 scripts/bootstrap-oidc.sh        # one-shot: OIDC app, role, federated creds, gh secrets
 ```
 
+## Prerequisites
+
+**Local tools**
+- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) (`az`) — for the bootstrap script and manual Azure operations
+- [GitHub CLI](https://cli.github.com/) (`gh`) — optional; lets the bootstrap script push secrets automatically
+- [Tailscale](https://tailscale.com/download) client — required to SSH into the VM (no public port 22)
+
+**Azure**
+- Subscription with rights to create app registrations and assign the Contributor role
+- Two quota increases in your chosen region (`Home → Subscriptions → Usage + quotas`):
+  - **Standard NCSv3 Family vCPUs** (T4 VM family): 0 → 1
+  - **Total Regional Spot vCPUs**: 3 → 16
+
+**GitHub**
+- A repository with Actions enabled
+
+**Tailscale**
+- An account with MagicDNS and HTTPS certificates enabled (Admin → DNS) so Tailscale Serve can expose Open WebUI over `https://`
+
 ## One-time setup
 
 ### 1. Azure OIDC federated credentials (automated)
@@ -79,6 +98,43 @@ Run the **deploy** workflow manually from GitHub Actions.
 > docker ps   # open-webui should show Status: (healthy)
 > ```
 
+## VM scripts
+
+The VM ships several helper commands (installed to `/usr/local/bin/`):
+
+| Command | What it does |
+|---|---|
+| `start` | Creates a `vm` tmux session with 3 panes (see layout below). Run once after SSH. |
+| `attach-start` | Re-attaches to the existing `vm` session after disconnect. |
+| `deepseek-r1-32k-start` | Pulls `deepseek-r1:14b`, creates a `deepseek-r1-32k` variant with 32 k context, then runs it. Skip the pull if already downloaded. |
+
+### tmux layout (`start`)
+
+```
++-------------------------------+
+|                               |
+|          your shell           |
+|                               |
++---------------+---------------+
+|  ollama logs  |  nvidia-smi   |
+| (journalctl)  |  (watch -n1)  |
++---------------+---------------+
+```
+
+### tmux cheat sheet
+
+| Key | Action |
+|---|---|
+| `Ctrl-b d` | Detach session (leaves everything running) |
+| `Ctrl-b <arrow>` | Move focus between panes |
+| `Ctrl-b z` | Zoom/unzoom the active pane |
+| `Ctrl-b [` | Enter scroll/copy mode — use arrows or `PgUp`/`PgDn` to scroll, `q` to exit |
+| `Ctrl-b q` | Flash pane numbers |
+| `Ctrl-b x` | Kill active pane (confirm with `y`) |
+| `Ctrl-b &` | Kill current window (confirm with `y`) |
+
+To re-attach after SSH disconnect: run `attach-start` (or `tmux attach -t vm` directly).
+
 ## Pull a model
 
 After deploy, SSH into the VM and pull a model manually:
@@ -89,6 +145,12 @@ ollama pull llama3.2:1b      # ~1.3 GB, smallest model with tool support
 ollama pull llama3.2:3b      # ~2 GB, better quality
 ollama pull llama3.1:8b      # ~4.7 GB, recommended for GPU
 ollama list                  # verify downloaded models
+```
+
+For DeepSeek R1 14B with extended context, use the bundled script instead:
+
+```bash
+deepseek-r1-32k-start        # pulls, creates 32k-context variant, and runs it
 ```
 
 Models are stored on the persistent data disk (`/mnt/models`) and survive VM restarts.
@@ -111,8 +173,8 @@ Chats and settings persist on the data disk.
     "baseURL": "http://ollama-vm:11434/v1"
   },
   "models": {
-    "llama3.2:1b": {
-      "name": "Llama 3.2 1B"
+    "deepseek-r1-32k": {
+      "name": "DeepSeek R1 32k"
     }
   }
 }
@@ -124,6 +186,6 @@ then deletes the whole resource group (VM, disks, network, IP — everything).
 
 ## Notes
 - T4 region availability and Spot quota vary — pick a region (`AZURE_LOCATION`) that
-  has `Standard_NC4as_T4_v3` Spot capacity and request quota if needed.
+  has `Standard_NC16as_T4_v3` Spot capacity and request quota if needed.
 - First boot installs NVIDIA drivers via `ubuntu-drivers install`; allow a few extra minutes before GPU inference works.
-- Change the model via `ollamaModel` in `parameters.json`.
+- VM size, disk size, and auto-shutdown time can be adjusted in `parameters.json`.
