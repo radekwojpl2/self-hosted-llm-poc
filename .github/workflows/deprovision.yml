@@ -46,8 +46,6 @@ jobs:
 
       # Option A: delete the entire resource group (everything in it).
       - name: Delete resource group
-        uses: azure/cli@v2
-        with:
-          inlineScript: |
-            az group delete --name "${{ secrets.AZURE_RG }}" --yes --no-wait
-            echo "Resource group deletion started."
+        run: |
+          az group delete --name "${{ secrets.AZURE_RG }}" --yes --no-wait
+          echo "Resource group deletion started."

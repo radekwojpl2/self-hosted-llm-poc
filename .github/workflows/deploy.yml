@@ -26,33 +26,26 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Ensure resource group
-        uses: azure/cli@v2
-        with:
-          inlineScript: |
-            az group create --name "$AZURE_RG" --location "$LOCATION" -o none
+        run: az group create --name "$AZURE_RG" --location "$LOCATION" -o none
 
       - name: Deploy Bicep
-        uses: azure/cli@v2
-        with:
-          inlineScript: |
-            az deployment group create \
-              --resource-group "$AZURE_RG" \
-              --name "$DEPLOYMENT_NAME" \
-              --template-file main.bicep \
-              --parameters parameters.json \
-              --parameters \
-                  sshPublicKey="${{ secrets.SSH_PUB }}" \
-                  tailscaleAuthKey="${{ secrets.TS_AUTHKEY }}" \
-                  grafanaCloudPromUrl="${{ secrets.GRAFANA_CLOUD_PROM_URL }}" \
-                  grafanaCloudPromUser="${{ secrets.GRAFANA_CLOUD_PROM_USER }}" \
-                  grafanaCloudApiKey="${{ secrets.GRAFANA_CLOUD_API_KEY }}" \
-              -o table
+        run: |
+          az deployment group create \
+            --resource-group "$AZURE_RG" \
+            --name "$DEPLOYMENT_NAME" \
+            --template-file main.bicep \
+            --parameters parameters.json \
+            --parameters \
+                sshPublicKey="${{ secrets.SSH_PUB }}" \
+                tailscaleAuthKey="${{ secrets.TS_AUTHKEY }}" \
+                grafanaCloudPromUrl="${{ secrets.GRAFANA_CLOUD_PROM_URL }}" \
+                grafanaCloudPromUser="${{ secrets.GRAFANA_CLOUD_PROM_USER }}" \
+                grafanaCloudApiKey="${{ secrets.GRAFANA_CLOUD_API_KEY }}" \
+            -o table
 
       - name: Show outputs
-        uses: azure/cli@v2
-        with:
-          inlineScript: |
-            az deployment group show \
-              --resource-group "$AZURE_RG" \
-              --name "$DEPLOYMENT_NAME" \
-              --query properties.outputs -o json || true
+        run: |
+          az deployment group show \
+            --resource-group "$AZURE_RG" \
+            --name "$DEPLOYMENT_NAME" \
+            --query properties.outputs -o json || true
