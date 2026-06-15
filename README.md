@@ -125,8 +125,8 @@ The VM ships several helper commands (installed to `/usr/local/bin/`):
 | `start` | Creates a `vm` tmux session with 3 panes (see layout below). Run once after SSH. |
 | `attach-start` | Re-attaches to the existing `vm` session after disconnect. |
 | `deepseek-r1-32k-start` | Pulls `deepseek-r1:14b`, creates a `deepseek-r1-32k` variant with 32 k context, then runs it. Skip the pull if already downloaded. |
-| `qwen-start` | Pulls `qwen2.5:32b`, creates a `qwen2.5-32b-128k` variant with 128 k context, then runs it. Skips the pull if already downloaded. |
-| `qwen72b-start` | Pulls `qwen2.5:72b`, creates a `qwen2.5-72b-32k` variant with 32 k context, then runs it. Skips the pull if already downloaded. |
+| `qwen-start` | Pulls `qwen2.5:32b`, creates a `qwen2.5-32b-128k` variant with 128 k context, then runs it. Skips the pull if already downloaded. **Requires NC64as T4 v3 (64 GB VRAM).** |
+| `qwen72b-start` | Pulls `qwen2.5:72b`, creates a `qwen2.5-72b-32k` variant with 32 k context, then runs it. Skips the pull if already downloaded. **Requires NC64as T4 v3 (64 GB VRAM).** |
 
 ### tmux layout (`start`)
 
