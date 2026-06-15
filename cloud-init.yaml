@@ -69,6 +69,8 @@ write_files:
         echo "Session 'vm' already exists. Use attach-start to resume it."
         exit 1
       fi
+
+      # Window 0: shell (top) | ollama logs + nvidia-smi (bottom)
       tmux new-session -d -s vm
       tmux split-window -v -t vm
       tmux send-keys -t vm:0.1 'journalctl -fu ollama' Enter
@@ -77,6 +79,18 @@ write_files:
       tmux select-pane -t vm:0.1
       tmux resize-pane -t vm:0.1 -y 30
       tmux select-pane -t vm:0.0
+
+      # Window 1: observability health
+      tmux new-window -t vm
+      tmux split-window -h -t vm:1
+      tmux split-window -v -t vm:1.0
+      tmux split-window -v -t vm:1.1
+      tmux send-keys -t vm:1.0 'watch -n5 systemctl status alloy' Enter
+      tmux send-keys -t vm:1.1 'watch -n5 systemctl status nvidia-gpu-exporter' Enter
+      tmux send-keys -t vm:1.2 'journalctl -fu setup-phase2' Enter
+      tmux send-keys -t vm:1.3 'watch -n5 "curl -s http://localhost:11434/metrics | head -40"' Enter
+
+      tmux select-window -t vm:0
       tmux attach-session -t vm
 
   - path: /usr/local/bin/attach-start

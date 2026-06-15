@@ -113,6 +113,7 @@ The VM ships several helper commands (installed to `/usr/local/bin/`):
 
 ### tmux layout (`start`)
 
+**Window 0** — main shell:
 ```
 +-------------------------------+
 |                               |
@@ -124,12 +125,24 @@ The VM ships several helper commands (installed to `/usr/local/bin/`):
 +---------------+---------------+
 ```
 
+**Window 1** — observability (`Ctrl-b 1`):
+```
++---------------+---------------+
+|  alloy        |  nvidia-gpu   |
+|  status       |  exporter     |
++---------------+---------------+
+|  setup-phase2 |  ollama       |
+|  logs         |  metrics      |
++---------------+---------------+
+```
+
 ### tmux cheat sheet
 
 | Key | Action |
 |---|---|
 | `Ctrl-b d` | Detach session (leaves everything running) |
 | `Ctrl-b <arrow>` | Move focus between panes |
+| `Ctrl-b 0` / `Ctrl-b 1` | Switch to window 0 (shell) or window 1 (observability) |
 | `Ctrl-b z` | Zoom/unzoom the active pane |
 | `Ctrl-b [` | Enter scroll/copy mode — use arrows or `PgUp`/`PgDn` to scroll, `q` to exit |
 | `Ctrl-b q` | Flash pane numbers |
