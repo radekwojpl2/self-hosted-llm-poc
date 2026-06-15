@@ -43,6 +43,9 @@ jobs:
               --parameters \
                   sshPublicKey="${{ secrets.SSH_PUB }}" \
                   tailscaleAuthKey="${{ secrets.TS_AUTHKEY }}" \
+                  grafanaCloudPromUrl="${{ secrets.GRAFANA_CLOUD_PROM_URL }}" \
+                  grafanaCloudPromUser="${{ secrets.GRAFANA_CLOUD_PROM_USER }}" \
+                  grafanaCloudApiKey="${{ secrets.GRAFANA_CLOUD_API_KEY }}" \
               -o table
 
       - name: Show outputs

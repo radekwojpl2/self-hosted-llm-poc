@@ -85,6 +85,9 @@ creates the very identity the pipeline authenticates with.
 | `TS_AUTHKEY` | Tailscale ephemeral auth key |
 | `TS_API_KEY` | Tailscale API token (teardown) |
 | `TS_TAILNET` | Tailnet name |
+| `GRAFANA_CLOUD_PROM_URL` | Grafana Cloud Prometheus remote write URL |
+| `GRAFANA_CLOUD_PROM_USER` | Grafana Cloud Prometheus username / instance ID |
+| `GRAFANA_CLOUD_API_KEY` | Grafana Cloud API key (metrics:write scope) |
 
 ## Deploy
 Run the **deploy** workflow manually from GitHub Actions.

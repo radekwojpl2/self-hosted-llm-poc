@@ -38,6 +38,17 @@ param autoShutdownTime string = '2000'
 @description('Timezone for auto-shutdown (Windows timezone id).')
 param autoShutdownTimeZone string = 'UTC'
 
+@description('Grafana Cloud Prometheus remote write URL.')
+@secure()
+param grafanaCloudPromUrl string
+
+@description('Grafana Cloud Prometheus username / instance ID.')
+param grafanaCloudPromUser string
+
+@description('Grafana Cloud API key for metrics write.')
+@secure()
+param grafanaCloudApiKey string
+
 var vnetName    = '${namePrefix}-vnet'
 var subnetName  = '${namePrefix}-subnet'
 var nsgName     = '${namePrefix}-nsg'
@@ -47,7 +58,7 @@ var vmName      = '${namePrefix}-vm'
 var dataDiskName = '${namePrefix}-data'
 
 // Cloud-init rendered with parameters, then base64-encoded for customData.
-var cloudInit = format(loadTextContent('cloud-init.yaml'), tailscaleAuthKey, vmName)
+var cloudInit = format(loadTextContent('cloud-init.yaml'), tailscaleAuthKey, vmName, grafanaCloudPromUrl, grafanaCloudPromUser, grafanaCloudApiKey)
 
 // --- Networking -------------------------------------------------------------
 // NSG with NO inbound SSH rule. Default rules deny inbound from internet;

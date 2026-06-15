@@ -85,6 +85,32 @@ write_files:
       #!/usr/bin/env bash
       tmux attach-session -t vm
 
+  - path: /etc/systemd/system/nvidia-gpu-exporter.service
+    content: |
+      [Unit]
+      Description=NVIDIA GPU Exporter
+      After=network.target
+
+      [Service]
+      ExecStart=/usr/local/bin/nvidia_gpu_exporter
+      Restart=always
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /etc/alloy/credentials.env
+    permissions: '0600'
+    content: |
+      GRAFANA_CLOUD_PROM_URL={2}
+      GRAFANA_CLOUD_PROM_USER={3}
+      GRAFANA_CLOUD_API_KEY={4}
+
+  - path: /etc/systemd/system/alloy.service.d/override.conf
+    content: |
+      [Service]
+      EnvironmentFile=/etc/alloy/credentials.env
+
   # Phase 1: disk setup + NVIDIA drivers. Reboots when done.
   - path: /usr/local/bin/setup-phase1.sh
     permissions: '0755'
@@ -148,6 +174,60 @@ write_files:
 
       # --- Expose Open WebUI over the tailnet with HTTPS (Tailscale Serve) ---
       systemctl enable --now tailscale-serve
+
+      # --- Observability: nvidia_gpu_exporter ---
+      curl -fsSL https://github.com/utkuozdemir/nvidia_gpu_exporter/releases/download/v1.4.1/nvidia_gpu_exporter_1.4.1_linux_x86_64.tar.gz \
+        | tar -xz -C /tmp
+      mv /tmp/nvidia_gpu_exporter /usr/local/bin/nvidia_gpu_exporter
+      chmod +x /usr/local/bin/nvidia_gpu_exporter
+      systemctl enable --now nvidia-gpu-exporter
+
+      # --- Observability: Grafana Alloy ---
+      curl -fsSL https://apt.grafana.com/gpg.key \
+        | gpg --dearmor -o /etc/apt/keyrings/grafana.gpg
+      echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" \
+        > /etc/apt/sources.list.d/grafana.list
+      apt-get update -qq
+      apt-get install -y alloy
+
+      # Write config after install so the package cannot overwrite it.
+      mkdir -p /etc/alloy
+      cat > /etc/alloy/config.alloy << 'ALLOYEOF'
+      prometheus.exporter.unix "node" {{}}
+
+      prometheus.scrape "node" {{
+        targets    = prometheus.exporter.unix.node.targets
+        forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+      }}
+
+      prometheus.scrape "nvidia_gpu" {{
+        targets = [{{
+          __address__ = "localhost:9835",
+        }}]
+        forward_to = [prometheus.remote_write.grafana_cloud.receiver]
+      }}
+
+      prometheus.scrape "ollama" {{
+        targets = [{{
+          __address__ = "localhost:11434",
+        }}]
+        metrics_path = "/metrics"
+        forward_to   = [prometheus.remote_write.grafana_cloud.receiver]
+      }}
+
+      prometheus.remote_write "grafana_cloud" {{
+        endpoint {{
+          url = env("GRAFANA_CLOUD_PROM_URL")
+          basic_auth {{
+            username = env("GRAFANA_CLOUD_PROM_USER")
+            password = env("GRAFANA_CLOUD_API_KEY")
+          }}
+        }}
+      }}
+      ALLOYEOF
+
+      systemctl daemon-reload
+      systemctl enable --now alloy
 
 runcmd:
   - /usr/local/bin/setup-phase1.sh
