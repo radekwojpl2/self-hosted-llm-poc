@@ -88,7 +88,7 @@ write_files:
       tmux send-keys -t vm:1.0 'watch -n5 systemctl status alloy' Enter
       tmux send-keys -t vm:1.1 'watch -n5 systemctl status nvidia-gpu-exporter' Enter
       tmux send-keys -t vm:1.2 'journalctl -fu setup-phase2' Enter
-      tmux send-keys -t vm:1.3 'watch -n5 "curl -s http://localhost:11434/metrics | head -40"' Enter
+      tmux send-keys -t vm:1.3 'watch -n5 "curl -s http://localhost:11434/api/ps"' Enter
 
       tmux select-window -t vm:0
       tmux attach-session -t vm
@@ -219,14 +219,6 @@ write_files:
           __address__ = "localhost:9835",
         }}]
         forward_to = [prometheus.remote_write.grafana_cloud.receiver]
-      }}
-
-      prometheus.scrape "ollama" {{
-        targets = [{{
-          __address__ = "localhost:11434",
-        }}]
-        metrics_path = "/metrics"
-        forward_to   = [prometheus.remote_write.grafana_cloud.receiver]
       }}
 
       prometheus.remote_write "grafana_cloud" {{
