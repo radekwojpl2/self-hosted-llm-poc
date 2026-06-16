@@ -23,6 +23,9 @@ param sshPublicKey string
 @secure()
 param tailscaleAuthKey string
 
+@description('Tailscale hostname for this VM. Defaults to the Azure VM name.')
+param tailscaleHostname string = vmName
+
 @description('GPU VM size (NC T4 v3 family).')
 param vmSize string = 'Standard_NC4as_T4_v3'
 
@@ -58,7 +61,7 @@ var vmName      = '${namePrefix}-vm'
 var dataDiskName = '${namePrefix}-data'
 
 // Cloud-init rendered with parameters, then base64-encoded for customData.
-var cloudInit = format(loadTextContent('cloud-init.yaml'), tailscaleAuthKey, vmName, grafanaCloudPromUrl, grafanaCloudPromUser, grafanaCloudApiKey)
+var cloudInit = format(loadTextContent('cloud-init.yaml'), tailscaleAuthKey, tailscaleHostname, grafanaCloudPromUrl, grafanaCloudPromUser, grafanaCloudApiKey)
 
 // --- Networking -------------------------------------------------------------
 // NSG with NO inbound SSH rule. Default rules deny inbound from internet;

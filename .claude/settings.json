@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh azureuser@ollama-vm-1.tail964aac.ts.net*)"
+    ]
+  }
+}

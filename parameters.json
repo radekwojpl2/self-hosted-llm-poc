@@ -3,6 +3,7 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "namePrefix":          { "value": "ollama" },
+    "tailscaleHostname":   { "value": "ollama-vm-1" },
     "adminUsername":       { "value": "azureuser" },
     "vmSize":              { "value": "Standard_NC16as_T4_v3" },
     "spotMaxPrice":        { "value": "-1" },
