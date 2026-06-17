@@ -116,7 +116,4 @@ jobs:
             --name "ollama-vm-1" \
             --command-id RunShellScript \
             --scripts @scripts/deployment/phase2-alloy.sh \
-            --parameters \
-              "${{ secrets.GRAFANA_CLOUD_PROM_URL }}" \
-              "${{ secrets.GRAFANA_CLOUD_PROM_USER }}" \
-              "${{ secrets.GRAFANA_CLOUD_API_KEY }}"
+            --parameters "${{ secrets.GRAFANA_CLOUD_PROM_URL }}" "${{ secrets.GRAFANA_CLOUD_PROM_USER }}" "${{ secrets.GRAFANA_CLOUD_API_KEY }}"
