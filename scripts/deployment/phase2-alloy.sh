@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# $1 = Grafana Cloud Prometheus URL
-# $2 = Grafana Cloud Prometheus user/instance ID
-# $3 = Grafana Cloud API key
+# Credentials are written by the workflow step before this script runs.
+# Expects /etc/alloy/credentials.env to already exist on the VM.
 set -euxo pipefail
 
 curl -fsSL https://apt.grafana.com/gpg.key \
@@ -9,20 +8,9 @@ curl -fsSL https://apt.grafana.com/gpg.key \
 echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" \
   > /etc/apt/sources.list.d/grafana.list
 apt-get update -qq
-
-# Write credentials before install so Alloy can start if apt auto-starts it.
-mkdir -p /etc/alloy
-
-cat > /etc/alloy/credentials.env << EOF
-GRAFANA_CLOUD_PROM_URL=$1
-GRAFANA_CLOUD_PROM_USER=$2
-GRAFANA_CLOUD_API_KEY=$3
-EOF
-chmod 600 /etc/alloy/credentials.env
-
-# Install after credentials exist; write config after install so package cannot overwrite it.
 apt-get install -y alloy
 
+# Write config after install so the package cannot overwrite it.
 cat > /etc/alloy/config.alloy << 'ALLOYEOF'
 prometheus.exporter.unix "node" {}
 

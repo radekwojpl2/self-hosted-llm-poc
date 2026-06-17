@@ -109,11 +109,18 @@ jobs:
             --command-id RunShellScript \
             --scripts @scripts/deployment/phase2-nvidia-exporter.sh
 
-      - name: Phase 2f - Grafana Alloy
+      - name: Phase 2f - Grafana Alloy credentials
         run: |
           az vm run-command invoke \
             --resource-group "$AZURE_RG" \
             --name "ollama-vm-1" \
             --command-id RunShellScript \
-            --scripts @scripts/deployment/phase2-alloy.sh \
-            --parameters "${{ secrets.GRAFANA_CLOUD_PROM_URL }}" "${{ secrets.GRAFANA_CLOUD_PROM_USER }}" "${{ secrets.GRAFANA_CLOUD_API_KEY }}"
+            --scripts "mkdir -p /etc/alloy && printf 'GRAFANA_CLOUD_PROM_URL=%s\nGRAFANA_CLOUD_PROM_USER=%s\nGRAFANA_CLOUD_API_KEY=%s\n' '${{ secrets.GRAFANA_CLOUD_PROM_URL }}' '${{ secrets.GRAFANA_CLOUD_PROM_USER }}' '${{ secrets.GRAFANA_CLOUD_API_KEY }}' > /etc/alloy/credentials.env && chmod 600 /etc/alloy/credentials.env"
+
+      - name: Phase 2f - Grafana Alloy install
+        run: |
+          az vm run-command invoke \
+            --resource-group "$AZURE_RG" \
+            --name "ollama-vm-1" \
+            --command-id RunShellScript \
+            --scripts @scripts/deployment/phase2-alloy.sh
