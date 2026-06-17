@@ -17,12 +17,20 @@ don't force a re-download. Teardown deletes the **entire resource group** (Optio
 
 ## Repo layout
 ```
-main.bicep                       # infra
-cloud-init.yaml                  # first-boot: disk, drivers, Tailscale, Ollama, model, Open WebUI
-parameters.json                  # non-secret defaults
-.github/workflows/deploy.yml     # provision
-.github/workflows/deprovision.yml# teardown (type DELETE to confirm)
-scripts/bootstrap-oidc.sh        # one-shot: OIDC app, role, federated creds, gh secrets
+main.bicep                            # infra
+cloud-init.yaml                       # first-boot: static file drops (systemd units, helper scripts)
+parameters.json                       # non-secret defaults
+.github/workflows/deploy.yml          # provision + full VM setup
+.github/workflows/deprovision.yml     # teardown (type DELETE to confirm)
+scripts/
+  bootstrap/bootstrap-oidc.sh         # one-shot: OIDC app, role, federated creds, gh secrets
+  deployment/phase1.sh                # disk setup + NVIDIA drivers (run via az vm run-command)
+  deployment/phase2-tailscale.sh      # Tailscale install + join tailnet
+  deployment/phase2-ollama.sh         # Ollama install
+  deployment/phase2-docker.sh         # Docker install
+  deployment/phase2-webui.sh          # Open WebUI container + Tailscale Serve
+  deployment/phase2-nvidia-exporter.sh# NVIDIA GPU Prometheus exporter
+  deployment/phase2-alloy.sh          # Grafana Alloy install + config
 ```
 
 ## Prerequisites
@@ -55,7 +63,7 @@ credentials, and — if `gh` is installed — sets the Azure GitHub secrets for 
 ```bash
 az login
 REPO=<owner>/<repo> RG_NAME=ollama-rg LOCATION=westeurope \
-  ./scripts/bootstrap-oidc.sh
+  ./scripts/bootstrap/bootstrap-oidc.sh
 ```
 
 Useful overrides: `SCOPE_SUBSCRIPTION=1` (assign at subscription scope instead of
@@ -107,14 +115,13 @@ Go to your repo → **Settings** → **Secrets and variables** → **Actions** �
 ## Deploy
 Run the **deploy** workflow manually from GitHub Actions.
 
-> **Important:** the pipeline completing does not mean the VM is ready. Setup runs in
-> two phases: phase 1 installs NVIDIA drivers and reboots (~5 min), phase 2 installs
-> Tailscale, Ollama, Docker, and Open WebUI (~10 min). Total: **15–25 minutes**.
-> Tailscale appears after phase 2 completes. Wait until Open WebUI is healthy:
-> ```bash
-> ssh azureuser@ollama-vm
-> docker ps   # open-webui should show Status: (healthy)
-> ```
+The pipeline drives the full VM setup end-to-end as discrete steps:
+1. **Bicep deploy** — creates VM, data disk, networking
+2. **Phase 1** — disk setup + NVIDIA drivers (~5–10 min)
+3. **VM restart** — activates drivers
+4. **Phase 2a–2f** — Tailscale, Ollama, Docker, Open WebUI, NVIDIA exporter, Grafana Alloy (~10 min)
+
+When the workflow shows green, the VM is fully set up. Total: **~20–30 minutes**.
 
 ## VM scripts
 
@@ -149,7 +156,7 @@ The VM ships several helper commands (installed to `/usr/local/bin/`):
 |  alloy        |  nvidia-gpu   |
 |  status       |  exporter     |
 +---------------+---------------+
-|  setup-phase2 |  ollama       |
+|  alloy        |  ollama       |
 |  logs         |  metrics      |
 +---------------+---------------+
 ```

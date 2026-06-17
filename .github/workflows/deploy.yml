@@ -1,4 +1,4 @@
-name: deploy
+﻿name: deploy
 
 on:
   workflow_dispatch:
@@ -49,3 +49,74 @@ jobs:
             --resource-group "$AZURE_RG" \
             --name "$DEPLOYMENT_NAME" \
             --query properties.outputs -o json || true
+
+      - name: Phase 1 - disk setup + NVIDIA drivers
+        run: |
+          az vm run-command invoke \
+            --resource-group "$AZURE_RG" \
+            --name "ollama-vm-1" \
+            --command-id RunShellScript \
+            --scripts @scripts/deployment/phase1.sh
+
+      - name: Restart VM (activate NVIDIA drivers)
+        run: az vm restart --resource-group "$AZURE_RG" --name "ollama-vm-1"
+
+      - name: Wait for VM running
+        run: |
+          az vm wait \
+            --resource-group "$AZURE_RG" \
+            --name "ollama-vm-1" \
+            --updated --interval 15 --timeout 300
+
+      - name: Phase 2a - Tailscale
+        run: |
+          az vm run-command invoke \
+            --resource-group "$AZURE_RG" \
+            --name "ollama-vm-1" \
+            --command-id RunShellScript \
+            --scripts @scripts/deployment/phase2-tailscale.sh \
+            --parameters "${{ secrets.TS_AUTHKEY }}" "ollama-vm-1"
+
+      - name: Phase 2b - Ollama
+        run: |
+          az vm run-command invoke \
+            --resource-group "$AZURE_RG" \
+            --name "ollama-vm-1" \
+            --command-id RunShellScript \
+            --scripts @scripts/deployment/phase2-ollama.sh
+
+      - name: Phase 2c - Docker
+        run: |
+          az vm run-command invoke \
+            --resource-group "$AZURE_RG" \
+            --name "ollama-vm-1" \
+            --command-id RunShellScript \
+            --scripts @scripts/deployment/phase2-docker.sh
+
+      - name: Phase 2d - Open WebUI + Tailscale Serve
+        run: |
+          az vm run-command invoke \
+            --resource-group "$AZURE_RG" \
+            --name "ollama-vm-1" \
+            --command-id RunShellScript \
+            --scripts @scripts/deployment/phase2-webui.sh
+
+      - name: Phase 2e - NVIDIA GPU Exporter
+        run: |
+          az vm run-command invoke \
+            --resource-group "$AZURE_RG" \
+            --name "ollama-vm-1" \
+            --command-id RunShellScript \
+            --scripts @scripts/deployment/phase2-nvidia-exporter.sh
+
+      - name: Phase 2f - Grafana Alloy
+        run: |
+          az vm run-command invoke \
+            --resource-group "$AZURE_RG" \
+            --name "ollama-vm-1" \
+            --command-id RunShellScript \
+            --scripts @scripts/deployment/phase2-alloy.sh \
+            --parameters \
+              "${{ secrets.GRAFANA_CLOUD_PROM_URL }}" \
+              "${{ secrets.GRAFANA_CLOUD_PROM_USER }}" \
+              "${{ secrets.GRAFANA_CLOUD_API_KEY }}"

@@ -57,8 +57,7 @@ var nicName     = '${namePrefix}-nic'
 var vmName      = '${namePrefix}-vm-1'
 var dataDiskName = '${namePrefix}-data'
 
-// Cloud-init rendered with parameters, then base64-encoded for customData.
-var cloudInit = format(loadTextContent('cloud-init.yaml'), tailscaleAuthKey, vmName, grafanaCloudPromUrl, grafanaCloudPromUser, grafanaCloudApiKey)
+var cloudInit = loadTextContent('cloud-init.yaml')
 
 // --- Networking -------------------------------------------------------------
 // NSG with NO inbound SSH rule. Default rules deny inbound from internet;
