@@ -1,0 +1,42 @@
+name: pull-model
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: 'Model to pull'
+        required: true
+        type: choice
+        default: qwen2.5:14b
+        options:
+          - qwen2.5:14b
+          - qwen2.5:32b
+          - qwen2.5:72b
+          - deepseek-r1:14b
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  pull-model:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Pull ${{ inputs.model }} on VM
+        run: |
+          az vm run-command invoke \
+            --resource-group "${{ secrets.AZURE_RG }}" \
+            --name "ollama-vm-1" \
+            --command-id RunShellScript \
+            --scripts @scripts/deployment/pull-model.sh \
+            --parameters "${{ inputs.model }}"
+        timeout-minutes: 90
