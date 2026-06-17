@@ -2,6 +2,7 @@
 # $1 = model to pull (e.g. qwen2.5:14b, deepseek-r1:14b)
 # $2 = context size override (optional, e.g. 32768); uses per-model default if omitted
 set -euxo pipefail
+export HOME=/root
 
 MODEL="${1:?model name required}"
 ollama pull "$MODEL"
