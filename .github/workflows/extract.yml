@@ -1,0 +1,49 @@
+name: extract
+
+on:
+  workflow_dispatch:
+    inputs:
+      file_path:
+        description: 'Filename to extract (e.g. paper.md) — upload via Filebrowser to hyper-extract-input/ first'
+        required: true
+      template:
+        description: 'Extraction template (e.g. general/biography_graph, finance/earnings_graph)'
+        required: true
+        default: 'general/biography_graph'
+      model:
+        description: 'Ollama model to use'
+        required: true
+        type: choice
+        default: deepseek-r1-32k
+        options:
+          - deepseek-r1-32k
+          - qwen2.5-14b-20k
+          - qwen2.5-32b-128k
+          - qwen2.5-72b-32k
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Run extraction on VM
+        run: |
+          az vm run-command invoke \
+            --resource-group "${{ secrets.AZURE_RG }}" \
+            --name "ollama-vm-1" \
+            --command-id RunShellScript \
+            --scripts @scripts/deployment/extract.sh \
+            --parameters "${{ inputs.file_path }}" "${{ inputs.template }}" "${{ inputs.model }}"
+        timeout-minutes: 60

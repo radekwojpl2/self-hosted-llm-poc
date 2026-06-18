@@ -22,6 +22,9 @@ cloud-init.yaml                       # first-boot: static file drops (systemd u
 parameters.json                       # non-secret defaults
 .github/workflows/deploy.yml          # provision + full VM setup
 .github/workflows/deprovision.yml     # teardown (type DELETE to confirm)
+.github/workflows/pull-model.yml      # pull (and optionally create a context-size variant of) a model
+.github/workflows/deploy-extensions.yml # install Filebrowser + hyper-extract on existing VM
+.github/workflows/extract.yml         # run hyper-extract on a file already on the VM
 scripts/
   bootstrap/bootstrap-oidc.sh         # one-shot: OIDC app, role, federated creds, gh secrets
   deployment/phase1.sh                # disk setup + NVIDIA drivers (run via az vm run-command)
@@ -31,6 +34,10 @@ scripts/
   deployment/phase2-webui.sh          # Open WebUI container + Tailscale Serve
   deployment/phase2-nvidia-exporter.sh# NVIDIA GPU Prometheus exporter
   deployment/phase2-alloy.sh          # Grafana Alloy install + config
+  deployment/ext-filebrowser.sh       # Filebrowser container + Tailscale Serve (port 8443)
+  deployment/ext-hyper-extract.sh     # uv + hyperextract install
+  deployment/pull-model.sh            # pull a model + create a named context-size variant
+  deployment/extract.sh               # run hyper-extract on a file (called by extract workflow)
 ```
 
 ## Prerequisites
@@ -150,24 +157,13 @@ The VM ships several helper commands (installed to `/usr/local/bin/`):
 +---------------+---------------+
 ```
 
-**Window 1** — observability (`Ctrl-b 1`):
-```
-+---------------+---------------+
-|  alloy        |  nvidia-gpu   |
-|  status       |  exporter     |
-+---------------+---------------+
-|  alloy        |  ollama       |
-|  logs         |  metrics      |
-+---------------+---------------+
-```
-
 ### tmux cheat sheet
 
 | Key | Action |
 |---|---|
 | `Ctrl-b d` | Detach session (leaves everything running) |
 | `Ctrl-b <arrow>` | Move focus between panes |
-| `Ctrl-b 0` / `Ctrl-b 1` | Switch to window 0 (shell) or window 1 (observability) |
+| `Ctrl-b 0` | Switch to window 0 (main shell) |
 | `Ctrl-b z` | Zoom/unzoom the active pane |
 | `Ctrl-b [` | Enter scroll/copy mode — use arrows or `PgUp`/`PgDn` to scroll, `q` to exit |
 | `Ctrl-b q` | Flash pane numbers |
@@ -178,17 +174,26 @@ To re-attach after SSH disconnect: run `attach-start` (or `tmux attach -t vm` di
 
 ## Pull a model
 
-After deploy, SSH into the VM and pull a model manually:
+**Via GitHub Actions (recommended):** run the **pull-model** workflow manually from GitHub Actions. Select a model from the dropdown and, optionally, override the context size (leave `0` for the per-model default). The workflow SSHes into the VM via `az vm run-command`, pulls the model, and creates a named context-size variant automatically. Per-model defaults:
+
+| Model | Default context | Variant name created |
+|---|---|---|
+| `qwen2.5:14b` | 20 k (20480) | `qwen2.5-14b-20k` |
+| `qwen2.5:32b` | 128 k (131072) | `qwen2.5-32b-128k` |
+| `qwen2.5:72b` | 32 k (32768) | `qwen2.5-72b-32k` |
+| `deepseek-r1:14b` | 32 k (32768) | `deepseek-r1-32k` |
+
+**Manually over SSH:** for any other model, SSH in and pull directly:
 
 ```bash
-ssh azureuser@ollama-vm
+ssh azureuser@ollama-vm-1
 ollama pull llama3.2:1b      # ~1.3 GB, smallest model with tool support
 ollama pull llama3.2:3b      # ~2 GB, better quality
 ollama pull llama3.1:8b      # ~4.7 GB, recommended for GPU
 ollama list                  # verify downloaded models
 ```
 
-For models with extended context, use the bundled scripts instead:
+For models with extended context, the bundled VM scripts pull, create a variant, and start the model in one step:
 
 ```bash
 deepseek-r1-32k-start        # pulls deepseek-r1:14b, creates 32k-context variant, and runs it
@@ -202,7 +207,7 @@ Models are stored on the persistent data disk (`/mnt/models`) and survive VM res
 ## Use it
 
 **Browser (Open WebUI):** from any device on your tailnet, open
-`https://ollama-vm.<your-tailnet>.ts.net`. First visit, create the admin account.
+`https://ollama-vm-1.<your-tailnet>.ts.net`. First visit, create the admin account.
 Chats and settings persist on the data disk.
 
 > Ollama binds to `0.0.0.0:11434` but is only reachable inside the tailnet — no public inbound ports are open.
@@ -214,7 +219,7 @@ Chats and settings persist on the data disk.
   "npm": "@ai-sdk/openai-compatible",
   "name": "Ollama (VM)",
   "options": {
-    "baseURL": "http://ollama-vm:11434/v1"
+    "baseURL": "http://ollama-vm-1:11434/v1"
   },
   "models": {
     "deepseek-r1-32k": {
@@ -232,6 +237,41 @@ Chats and settings persist on the data disk.
   }
 }
 ```
+
+## Filebrowser
+
+Browse and download hyper-extract output from any device on your tailnet:
+
+```
+https://ollama-vm-1.<your-tailnet>.ts.net:8443
+```
+
+Default credentials: `admin` / `admin` — **change on first login** (top-right → Settings → Password).
+
+Files live on the persistent data disk at `/mnt/models/hyper-extract-output/` and survive VM restarts.
+
+## Knowledge extraction (hyper-extract)
+
+[hyper-extract](https://github.com/yifanfeng97/hyper-extract) transforms unstructured documents into structured knowledge graphs using the VM's Ollama models.
+
+**Workflow:**
+
+1. Upload your file to `hyper-extract-input/` via Filebrowser.
+2. Trigger the **extract** workflow from GitHub Actions → fill in:
+   - `file_path` — filename only (e.g. `paper.md`)
+   - `template` — extraction template (e.g. `general/biography_graph`, `finance/earnings_graph`, `general/academic_graph`)
+   - `model` — Ollama model to use
+3. Output appears in Filebrowser under a timestamped folder: `<YYYYMMDD-HHMMSS>-<filename>/`
+
+**Available templates (examples):**
+
+| Template | Use case |
+|---|---|
+| `general/biography_graph` | People, organisations, events |
+| `general/academic_graph` | Research papers, citations |
+| `finance/earnings_graph` | Earnings reports, financials |
+
+Run `he list templates` on the VM to see all 80+ templates.
 
 ## Grafana dashboards
 
