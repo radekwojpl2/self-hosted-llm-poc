@@ -57,7 +57,7 @@ scripts/
 - A repository with Actions enabled
 
 **Tailscale**
-- An account with MagicDNS and HTTPS certificates enabled (Admin → DNS) so Tailscale Serve can expose Open WebUI over `https://`
+- An account with MagicDNS enabled (Admin → DNS). Enable HTTPS certificates too if you want `https://` access — currently uses plain HTTP as a workaround for the Let's Encrypt 5-certs/week rate limit (see note in [Use it](#use-it))
 
 ## One-time setup
 
@@ -293,23 +293,24 @@ SSH into the VM and run `he list template` to see all 46 templates.
 
 ## Visualising the knowledge graph
 
-After extraction, hyper-extract can serve an interactive graph viewer (OntoSight):
+After extraction, hyper-extract can serve an interactive graph viewer (OntoSight).
+
+**Step 1 — start the viewer** (use `nohup` so it survives SSH session end):
 
 ```bash
-ssh azureuser@ollama-vm-1.tail964aac.ts.net "HOME=/root he show /mnt/models/hyper-extract-output/<run-folder>"
+ssh azureuser@ollama-vm-1.<your-tailnet>.ts.net \
+  "HOME=/root nohup he show /mnt/models/hyper-extract-output/<run-folder> > /tmp/heshow.log 2>&1 &"
 ```
 
-OntoSight binds to `localhost:8000` on the VM and its frontend JS hardcodes that address, so it must be accessed via an SSH tunnel — not the Tailscale hostname directly.
-
-**In a separate terminal on your machine**, open the tunnel:
+**Step 2 — open a tunnel** in a separate terminal on your machine:
 
 ```bash
-ssh -N -L 8000:127.0.0.1:8000 azureuser@ollama-vm-1.tail964aac.ts.net
+ssh -N -L 8000:127.0.0.1:8000 azureuser@ollama-vm-1.<your-tailnet>.ts.net
 ```
 
-Then open **http://localhost:8000** in your browser.
+**Step 3** — open **http://localhost:8000** in your browser.
 
-Keep the tunnel terminal open while viewing. `Ctrl+C` closes it when done.
+OntoSight's frontend JS hardcodes `localhost:8000` for API calls, so it must be accessed via the tunnel — the Tailscale hostname alone won't work. Keep the tunnel terminal open while viewing; `Ctrl+C` closes it.
 
 ## Grafana dashboards
 
