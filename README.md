@@ -34,7 +34,7 @@ scripts/
   deployment/phase2-webui.sh          # Open WebUI container + Tailscale Serve
   deployment/phase2-nvidia-exporter.sh# NVIDIA GPU Prometheus exporter
   deployment/phase2-alloy.sh          # Grafana Alloy install + config
-  deployment/ext-filebrowser.sh       # Filebrowser container + Tailscale Serve (port 8443)
+  deployment/ext-filebrowser.sh       # Filebrowser container + Tailscale Serve (port 8082)
   deployment/ext-hyper-extract.sh     # uv + hyperextract install
   deployment/pull-model.sh            # pull a model + create a named context-size variant
   deployment/extract.sh               # run hyper-extract on a file (called by extract workflow)
@@ -86,7 +86,6 @@ creates the very identity the pipeline authenticates with.
 - **Tailnet** (`TS_TAILNET`): e.g. `your-org.ts.net`, or `-` for your default tailnet.
 - **Enable HTTPS certificates** in the tailnet (Admin → DNS → enable MagicDNS +
   HTTPS) so Tailscale Serve can publish Open WebUI at a `https://...ts.net` URL.
-  If left off, the UI still serves over plain HTTP on the tailnet.
 
 ### 3. GitHub secrets
 
@@ -207,10 +206,12 @@ Models are stored on the persistent data disk (`/mnt/models`) and survive VM res
 ## Use it
 
 **Browser (Open WebUI):** from any device on your tailnet, open
-`https://ollama-vm-1.<your-tailnet>.ts.net`. First visit, create the admin account.
+`http://ollama-vm-1.<your-tailnet>.ts.net`. First visit, create the admin account.
 Chats and settings persist on the data disk.
 
 > Ollama binds to `0.0.0.0:11434` but is only reachable inside the tailnet — no public inbound ports are open.
+
+> **Note on HTTPS:** Tailscale Serve is currently configured to use plain HTTP (`--http=80`) as a workaround for a Let's Encrypt rate limit (5 certs/week per hostname, hit by repeated redeployments). All traffic is still WireGuard-encrypted in transit. To restore HTTPS after the rate limit expires, change `--http=80` back to `--https=443` in `cloud-init.yaml` and `--http=8082` back to `--https=8443` in `ext-filebrowser.sh`, then redeploy. Avoid running the full deploy workflow repeatedly to prevent burning through the cert quota again.
 
 **opencode:** add this to your `~/.opencode/config.json` to use the VM as a provider:
 
@@ -240,38 +241,75 @@ Chats and settings persist on the data disk.
 
 ## Filebrowser
 
-Browse and download hyper-extract output from any device on your tailnet:
+Browse, upload, and download files from any device on your tailnet:
 
 ```
-https://ollama-vm-1.<your-tailnet>.ts.net:8443
+http://ollama-vm-1.<your-tailnet>.ts.net:8082
 ```
 
 Default credentials: `admin` / `admin` — **change on first login** (top-right → Settings → Password).
 
-Files live on the persistent data disk at `/mnt/models/hyper-extract-output/` and survive VM restarts.
+The file root is `/mnt/models` on the persistent data disk. Relevant folders:
+
+| Folder | Purpose |
+|---|---|
+| `hyper-extract-input/` | Drop files here before running the extract workflow |
+| `hyper-extract-output/` | Extract results appear here (timestamped subfolders) |
 
 ## Knowledge extraction (hyper-extract)
 
-[hyper-extract](https://github.com/yifanfeng97/hyper-extract) transforms unstructured documents into structured knowledge graphs using the VM's Ollama models.
+hyper-extract transforms unstructured documents into structured knowledge graphs using the VM's Ollama models.
+
+**How it works:** two models are used per extraction run:
+- **LLM** (`qwen2.5-14b-20k` or similar) — reads the document and extracts entities/relations
+- **Embedder** (`nomic-embed-text`) — encodes the extracted knowledge into vector form
+
+Both are local Ollama models. The embedder is pulled and configured automatically by the `deploy-extensions` workflow.
 
 **Workflow:**
 
-1. Upload your file to `hyper-extract-input/` via Filebrowser.
+1. Upload your file to `hyper-extract-input/` via Filebrowser (`http://ollama-vm-1.<tailnet>:8082`)
 2. Trigger the **extract** workflow from GitHub Actions → fill in:
    - `file_path` — filename only (e.g. `paper.md`)
-   - `template` — extraction template (e.g. `general/biography_graph`, `finance/earnings_graph`, `general/academic_graph`)
-   - `model` — Ollama model to use
-3. Output appears in Filebrowser under a timestamped folder: `<YYYYMMDD-HHMMSS>-<filename>/`
+   - `template` — extraction template (e.g. `general/biography_graph`, `general/concept_graph`)
+   - `model` — Ollama model variant to use (e.g. `qwen2.5-14b-20k`)
+   - `lang` — document language: `en` (default) or `zh`
+3. Output appears in Filebrowser under `hyper-extract-output/<YYYYMMDD-HHMMSS>-<filename>/`
 
 **Available templates (examples):**
 
 | Template | Use case |
 |---|---|
-| `general/biography_graph` | People, organisations, events |
-| `general/academic_graph` | Research papers, citations |
-| `finance/earnings_graph` | Earnings reports, financials |
+| `general/graph` | Any document — general entity/relation extraction |
+| `general/concept_graph` | Textbooks, academic papers, technical docs |
+| `general/biography_graph` | People, organisations, events, chronicles |
+| `general/workflow_graph` | SOPs, agent workflows, process documents |
+| `finance/earnings_summary` | Earnings call transcripts |
+| `finance/risk_factor_set` | Annual report risk sections |
+| `legal/contract_obligation` | Contracts — rights and obligations |
+| `industry/operation_flow` | SOP manuals, operation step sequences |
 
-Run `he list templates` on the VM to see all 80+ templates.
+SSH into the VM and run `he list template` to see all 46 templates.
+
+## Visualising the knowledge graph
+
+After extraction, hyper-extract can serve an interactive graph viewer (OntoSight):
+
+```bash
+ssh azureuser@ollama-vm-1.tail964aac.ts.net "HOME=/root he show /mnt/models/hyper-extract-output/<run-folder>"
+```
+
+OntoSight binds to `localhost:8000` on the VM and its frontend JS hardcodes that address, so it must be accessed via an SSH tunnel — not the Tailscale hostname directly.
+
+**In a separate terminal on your machine**, open the tunnel:
+
+```bash
+ssh -N -L 8000:127.0.0.1:8000 azureuser@ollama-vm-1.tail964aac.ts.net
+```
+
+Then open **http://localhost:8000** in your browser.
+
+Keep the tunnel terminal open while viewing. `Ctrl+C` closes it when done.
 
 ## Grafana dashboards
 

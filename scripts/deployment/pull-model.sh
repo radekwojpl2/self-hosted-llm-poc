@@ -16,7 +16,8 @@ case "$MODEL" in
   *) DEFAULT_CTX=0; VARIANT="" ;;
 esac
 
-CTX="${2:-$DEFAULT_CTX}"
+CTX="${2:-0}"
+[ "$CTX" -eq 0 ] && CTX="$DEFAULT_CTX"
 
 if [ -n "$VARIANT" ] && [ "$CTX" -gt 0 ]; then
   # Convert ctx to a human-readable suffix: 131072 -> 128k, 32768 -> 32k, 20480 -> 20k

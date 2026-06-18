@@ -20,6 +20,10 @@ on:
           - qwen2.5-14b-20k
           - qwen2.5-32b-128k
           - qwen2.5-72b-32k
+      lang:
+        description: 'Document language (en or zh)'
+        required: false
+        default: 'en'
 
 permissions:
   id-token: write
@@ -45,5 +49,5 @@ jobs:
             --name "ollama-vm-1" \
             --command-id RunShellScript \
             --scripts @scripts/deployment/extract.sh \
-            --parameters "${{ inputs.file_path }}" "${{ inputs.template }}" "${{ inputs.model }}"
+            --parameters "${{ inputs.file_path }}" "${{ inputs.template }}" "${{ inputs.model }}" "${{ inputs.lang }}"
         timeout-minutes: 60

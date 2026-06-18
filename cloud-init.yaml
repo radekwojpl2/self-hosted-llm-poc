@@ -19,7 +19,7 @@ write_files:
 
       [Service]
       Type=oneshot
-      ExecStart=/usr/bin/tailscale serve --bg --https=443 http://127.0.0.1:8080
+      ExecStart=/usr/bin/tailscale serve --bg --http=80 http://127.0.0.1:8080
       RemainAfterExit=yes
 
       [Install]
